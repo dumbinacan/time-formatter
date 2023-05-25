@@ -29,13 +29,13 @@ impl SubAssign<usize> for TimeUnit {
     }
 }
 const TIMEUNIT_STRING: [&str; 7] = [
-    "Nanosecond",
-    "Microsecond",
-    "Millisecond",
-    "Second",
-    "Minute",
-    "Hour",
-    "Day",
+    "nanosecond",
+    "microsecond",
+    "millisecond",
+    "second",
+    "minute",
+    "hour",
+    "day",
 ];
 const TIME_NANOSECOND: [u128; 7] = [
     1,
@@ -98,19 +98,17 @@ impl TimeFormatter {
 
     /// return the String formatted to your specs
     pub fn format(&self, duration: Duration) -> String {
-        // Compute value of TimeUnit
-        // if value > 0, insert the String representation to the HashMap
-        // if the size of the hashmap is 1 and the value of that TimeUnit is 1, don't pluralize.
-        // if size of hashmap is 2 no commas just and
-        // if size of hashmap  > 2 commas with and for the last one.
-        let mut effective_max: TimeUnit = self.max; // the max unit we can use to represent this value
         let mut formatted_times: HashMap<usize, u128> = HashMap::new();
+        let mut effective_max: TimeUnit = self.max;
+
+        // find the largest TimeUnit within self.max that can represent duration
         while TIME_NANOSECOND[effective_max as usize] > duration.as_nanos() { effective_max -= 1; }
+
         let number = duration.as_nanos() / TIME_NANOSECOND[effective_max as usize];
         formatted_times.insert(effective_max as usize, number);
 
         for i in self.min as usize..effective_max as usize {
-            let number = duration.as_nanos() % TIME_NANOSECOND[i];
+            let number = (duration.as_nanos() % TIME_NANOSECOND[i+1]) / TIME_NANOSECOND[i];
             if number > 0 { formatted_times.insert(i, number); }
         }
         let mut formatted_time = String::new();
@@ -122,21 +120,22 @@ impl TimeFormatter {
         } else if formatted_times.len() == 2 {
             // "one unit and an other unit"
             let mut count: usize = 0;
-            for (k, v) in formatted_times.drain().take(1) {
+            for (k, v) in formatted_times.drain() {
                 let mut unit = " ".to_owned() + TIMEUNIT_STRING[k];
                 if v > 1 { unit += "s"; }
-                if count == 0 { unit = unit + " and"}
-                formatted_time = formatted_time + v.to_string().as_str() + unit.as_str() + " ";
+                if count == 0 { unit = unit + " and "}
+                formatted_time = formatted_time + v.to_string().as_str() + unit.as_str();
                 count += 1;
             }
         } else { // len > 2
             // "one unit, some, other, units, and final unit"
             let mut count: usize = 0;
-            for (k, v) in formatted_times.drain().take(1) {
+            let length = formatted_times.len();
+            for (k, v) in formatted_times.drain() {
                 let mut unit = " ".to_owned() + TIMEUNIT_STRING[k];
                 if v > 1 { unit += "s"; }
-                if count < formatted_time.len() - 1 { unit = unit + "," }
-                if count == formatted_time.len() - 1 { unit = unit + ", and" }
+                if count < length - 1 { unit = unit + "," }
+                if count == length - 1 { unit = unit + ", and" }
                 formatted_time = formatted_time + v.to_string().as_str() + unit.as_str() + " ";
                 count += 1;
             }
