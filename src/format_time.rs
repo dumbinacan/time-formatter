@@ -3,6 +3,7 @@ use std::{
     ops::SubAssign,
     time::Duration,
 };
+use itertools::Itertools;
 
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialOrd, PartialEq)]
 #[repr(usize)]
@@ -120,7 +121,7 @@ impl TimeFormatter {
         } else if formatted_times.len() == 2 {
             // "one unit and an other unit"
             let mut count: usize = 0;
-            for (k, v) in formatted_times.drain() {
+            for (k, v) in formatted_times.drain().sorted().rev() {
                 let mut unit = " ".to_owned() + TIMEUNIT_STRING[k];
                 if v > 1 { unit += "s"; }
                 if count == 0 { unit = unit + " and "}
@@ -130,13 +131,13 @@ impl TimeFormatter {
         } else { // len > 2
             // "one unit, some, other, units, and final unit"
             let mut count: usize = 0;
-            let length = formatted_times.len();
-            for (k, v) in formatted_times.drain() {
+            let total_units = formatted_times.len() - 1;
+            for (k, v) in formatted_times.drain().sorted().rev() {
                 let mut unit = " ".to_owned() + TIMEUNIT_STRING[k];
                 if v > 1 { unit += "s"; }
-                if count < length - 1 { unit = unit + "," }
-                if count == length - 1 { unit = unit + ", and" }
-                formatted_time = formatted_time + v.to_string().as_str() + unit.as_str() + " ";
+                if count < total_units - 1 { unit = unit + ", " }
+                if count == total_units - 1 { unit = unit + ", and " }
+                formatted_time = formatted_time + v.to_string().as_str() + unit.as_str();
                 count += 1;
             }
         }
