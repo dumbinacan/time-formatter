@@ -1,4 +1,8 @@
-use std::time::Duration;
+use std::{
+    collections::HashMap,
+    ops::SubAssign,
+    time::Duration,
+};
 
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialOrd, PartialEq)]
 #[repr(usize)]
@@ -10,6 +14,19 @@ pub enum TimeUnit {
     Minute = 4,
     Hour = 5,
     Day = 6,
+}
+impl SubAssign<usize> for TimeUnit {
+    fn sub_assign(&mut self, rhs: usize) {
+        match *self as usize - rhs {
+            6 => *self = TimeUnit::Day,
+            5 => *self = TimeUnit::Hour,
+            4 => *self = TimeUnit::Minute,
+            3 => *self = TimeUnit::Second,
+            2 => *self = TimeUnit::Millisecond,
+            1 => *self = TimeUnit::Microsecond,
+            _ => *self = TimeUnit::Nanosecond,
+        }
+    }
 }
 const TIMEUNIT_STRING: [&str; 7] = [
     "Nanosecond",
@@ -81,31 +98,49 @@ impl TimeFormatter {
 
     /// return the String formatted to your specs
     pub fn format(&self, duration: Duration) -> String {
-        let mut formatted_time: String = String::new();
+        // Compute value of TimeUnit
+        // if value > 0, insert the String representation to the HashMap
+        // if the size of the hashmap is 1 and the value of that TimeUnit is 1, don't pluralize.
+        // if size of hashmap is 2 no commas just and
+        // if size of hashmap  > 2 commas with and for the last one.
+        let mut effective_max: TimeUnit = self.max; // the max unit we can use to represent this value
+        let mut formatted_times: HashMap<usize, u128> = HashMap::new();
+        while TIME_NANOSECOND[effective_max as usize] > duration.as_nanos() { effective_max -= 1; }
+        let number = duration.as_nanos() / TIME_NANOSECOND[effective_max as usize];
+        formatted_times.insert(effective_max as usize, number);
 
-        for i in (self.min as usize + 1..=self.max as usize).rev() {
-            let mut number: u128 = duration.as_nanos();
-            let unit = String::from(TIMEUNIT_STRING[i as usize]) + "s";
-
-            if i == self.max as usize {
-                number /= TIME_NANOSECOND[i as usize];
-            } else {
-                number %= TIME_NANOSECOND[i as usize];
+        for i in self.min as usize..effective_max as usize {
+            let number = duration.as_nanos() % TIME_NANOSECOND[i];
+            if number > 0 { formatted_times.insert(i, number); }
+        }
+        let mut formatted_time = String::new();
+        if formatted_times.len() == 1 {
+            let (k, v) = formatted_times.drain().next().unwrap();
+            let mut unit = " ".to_string() + TIMEUNIT_STRING[k];
+            if v > 1 { unit = unit + "s"; }
+            formatted_time = v.to_string() + unit.as_str();
+        } else if formatted_times.len() == 2 {
+            // "one unit and an other unit"
+            let mut count: usize = 0;
+            for (k, v) in formatted_times.drain().take(1) {
+                let mut unit = " ".to_owned() + TIMEUNIT_STRING[k];
+                if v > 1 { unit += "s"; }
+                if count == 0 { unit = unit + " and"}
+                formatted_time = formatted_time + v.to_string().as_str() + unit.as_str() + " ";
+                count += 1;
             }
-            // TODO the few cases where we want the non plural variant. only one TimeUnit is being
-            // displayed and its value is 1
-            if number > 0 {
-                formatted_time += &format!("{} {}, ", number, unit);
+        } else { // len > 2
+            // "one unit, some, other, units, and final unit"
+            let mut count: usize = 0;
+            for (k, v) in formatted_times.drain().take(1) {
+                let mut unit = " ".to_owned() + TIMEUNIT_STRING[k];
+                if v > 1 { unit += "s"; }
+                if count < formatted_time.len() - 1 { unit = unit + "," }
+                if count == formatted_time.len() - 1 { unit = unit + ", and" }
+                formatted_time = formatted_time + v.to_string().as_str() + unit.as_str() + " ";
+                count += 1;
             }
         }
-
-        // need a form to check which will be the last format! call so it will have and .
-        let number = duration.as_nanos() % TIME_NANOSECOND[self.min as usize];
-        let unit = String::from(TIMEUNIT_STRING[self.min as usize]) + "s";
-        if number > 0 {
-            formatted_time += &format!("and {} {}.", number, unit);
-        }
-
         formatted_time
     }
 } // impl TimeFormatter
