@@ -99,13 +99,19 @@ impl TimeFormatter {
 
     /// return the String formatted to your specs
     pub fn format(&self, duration: Duration) -> String {
+        // why do work if 0?
+        if duration.is_zero() { return "0 ".to_string() + TIMEUNIT_STRING[self.min as usize] + "s"; }
+
         let mut formatted_times: HashMap<usize, u128> = HashMap::new();
         let mut effective_max: TimeUnit = self.max;
 
         // find the largest TimeUnit within self.max that can represent duration
-        while TIME_NANOSECOND[effective_max as usize] > duration.as_nanos() { effective_max -= 1; }
+        while ( TIME_NANOSECOND[effective_max as usize] > duration.as_nanos() ) &&
+              ( effective_max as usize >= self.min as usize ) { effective_max -= 1; }
 
         let number = duration.as_nanos() / TIME_NANOSECOND[effective_max as usize];
+        // effective zero check
+        if number == 0 { return "0 ".to_string() + TIMEUNIT_STRING[self.min as usize] + "s"; }
         formatted_times.insert(effective_max as usize, number);
 
         for i in self.min as usize..effective_max as usize {

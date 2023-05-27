@@ -10,10 +10,17 @@ mod tests {
     const DAY:    u64 = HOUR   * 24;
 
     #[test]
+    fn empty() {
+        let test_time = Duration::default();
+        let result = "0 milliseconds";
+        assert_eq!(TimeFormatter::new().format(test_time), result);
+    }
+    #[test]
     fn nanosec() {
         let test_time = Duration::from_nanos(1);
         let result = "1 nanosecond";
-        assert_eq!(TimeFormatter::new().format(test_time), result);
+        assert_eq!(TimeFormatter::from(TimeUnit::Second, TimeUnit::Nanosecond)
+                       .format(test_time), result);
     }
 
     #[test]
