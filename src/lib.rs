@@ -3,6 +3,11 @@ pub mod format_time;
 mod tests {
     use std::time::Duration;
     use crate::format_time::TimeFormatter;
+    use crate::format_time::TimeUnit;
+    const SECOND: u64 = 1;
+    const MINUTE: u64 = SECOND * 60;
+    const HOUR:   u64 = MINUTE * 60;
+    const DAY:    u64 = HOUR   * 24;
 
     #[test]
     fn nanosec() {
@@ -27,8 +32,8 @@ mod tests {
 
     #[test]
     fn second() {
-        let test_time = Duration::from_secs(2);
-        let result = "2 seconds";
+        let test_time = Duration::from_secs(1);
+        let result = "1 second";
         assert_eq!(TimeFormatter::new().format(test_time), result);
     }
 
@@ -48,8 +53,15 @@ mod tests {
 
     #[test]
     fn one_hour_one_minute_and_thirty_seconds() {
-        let test_time = Duration::from_secs(3690);
+        let test_time = Duration::from_secs(HOUR) + Duration::from_secs(MINUTE) + Duration::from_secs(30 * SECOND);
         let result = "1 hour, 1 minute, and 30 seconds";
         assert_eq!(TimeFormatter::new().format(test_time), result);
+    }
+
+    #[test]
+    fn three_days_two_hours_one_minute_and_thirty_seconds() {
+        let test_time = Duration::from_secs(3 * DAY) + Duration::from_secs(2 * HOUR) + Duration::from_secs(MINUTE) + Duration::from_secs(30 * SECOND);
+        let result = "3 days, 2 hours, 1 minute, and 30 seconds";
+        assert_eq!(TimeFormatter::from(TimeUnit::Day, TimeUnit::Nanosecond).format(test_time), result);
     }
 }
